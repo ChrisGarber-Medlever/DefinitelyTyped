@@ -6,7 +6,7 @@
 
 import * as React from "react";
 
-declare class ReactSVG extends React.Component<ReactSVG.ReactSVGProps> {}
+declare class ReactSVG extends React.Component<ReactSVG.ReactSVGProps> & React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>{}
 
 export = ReactSVG;
 
