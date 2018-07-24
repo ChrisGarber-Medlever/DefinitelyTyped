@@ -93,6 +93,7 @@ str = apiGwEvtReqCtx.identity.sourceIp;
 strOrNull = apiGwEvtReqCtx.identity.user;
 strOrNull = apiGwEvtReqCtx.identity.userAgent;
 strOrNull = apiGwEvtReqCtx.identity.userArn;
+str = apiGwEvtReqCtx.path;
 str = apiGwEvtReqCtx.stage;
 str = apiGwEvtReqCtx.requestId;
 str = apiGwEvtReqCtx.resourceId;
@@ -481,7 +482,7 @@ str = cloudwatchLogsDecodedData.logEvents[0].message;
 
 /* ClientContext */
 clientContextClient = clientCtx.client;
-anyObj = clientCtx.Custom;
+anyObj = clientCtx.custom;
 clientContextEnv = clientCtx.env;
 
 /* ClientContextEnv */
@@ -503,6 +504,7 @@ function callback(cb: AWSLambda.Callback) {
     cb();
     cb(null);
     cb(error);
+    cb(str); // https://docs.aws.amazon.com/apigateway/latest/developerguide/handle-errors-in-lambda-integration.html
     cb(null, anyObj);
     cb(null, bool);
     cb(null, str);
@@ -524,6 +526,58 @@ function customAuthorizerCallback(cb: AWSLambda.CustomAuthorizerCallback) {
     cb(error);
     cb(null, authResponse);
 }
+
+/* CodePipeline events https://docs.aws.amazon.com/codepipeline/latest/userguide/actions-invoke-lambda-function.html#actions-invoke-lambda-function-json-event-example */
+const CodePipelineEvent: AWSLambda.CodePipelineEvent = {
+    "CodePipeline.job": {
+        id: "11111111-abcd-1111-abcd-111111abcdef",
+        accountId: "111111111111",
+        data: {
+            actionConfiguration: {
+                configuration: {
+                    FunctionName: "MyLambdaFunctionForAWSCodePipeline",
+                    UserParameters: "some-input-such-as-a-URL"
+                }
+            },
+            inputArtifacts: [
+                {
+                    location: {
+                        s3Location: {
+                            bucketName: "the name of the bucket configured as the pipeline artifact store in Amazon S3, for example codepipeline-us-east-2-1234567890",
+                            objectKey: "the name of the application, for example CodePipelineDemoApplication.zip"
+                        },
+                        type: "S3"
+                    },
+                    revision: null,
+                    name: "ArtifactName"
+                }
+            ],
+            outputArtifacts: [],
+            artifactCredentials: {
+                secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                sessionToken: `MIICiTCCAfICCQD6m7oRw0uXOjANBgkqhkiG9w
+ 0BAQUFADCBiDELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAldBMRAwDgYDVQQHEwdTZ
+ WF0dGxlMQ8wDQYDVQQKEwZBbWF6b24xFDASBgNVBAsTC0lBTSBDb25zb2xlMRIw
+ EAYDVQQDEwlUZXN0Q2lsYWMxHzAdBgkqhkiG9w0BCQEWEG5vb25lQGFtYXpvbi5
+ jb20wHhcNMTEwNDI1MjA0NTIxWhcNMTIwNDI0MjA0NTIxWjCBiDELMAkGA1UEBh
+ MCVVMxCzAJBgNVBAgTAldBMRAwDgYDVQQHEwdTZWF0dGxlMQ8wDQYDVQQKEwZBb
+ WF6b24xFDASBgNVBAsTC0lBTSBDb25zb2xlMRIwEAYDVQQDEwlUZXN0Q2lsYWMx
+ HzAdBgkqhkiG9w0BCQEWEG5vb25lQGFtYXpvbi5jb20wgZ8wDQYJKoZIhvcNAQE
+ BBQADgY0AMIGJAoGBAMaK0dn+a4GmWIWJ21uUSfwfEvySWtC2XADZ4nB+BLYgVI
+ k60CpiwsZ3G93vUEIO3IyNoH/f0wYK8m9TrDHudUZg3qX4waLG5M43q7Wgc/MbQ
+ ITxOUSQv7c7ugFFDzQGBzZswY6786m86gpEIbb3OhjZnzcvQAaRHhdlQWIMm2nr
+ AgMBAAEwDQYJKoZIhvcNAQEFBQADgYEAtCu4nUhVVxYUntneD9+h8Mg9q6q+auN
+ KyExzyLwaxlAoo7TJHidbtS4J5iNmZgXL0FkbFFBjvSfpJIlJ00zbhNYS5f6Guo
+ EDmFJl0ZxBHjJnyp378OD8uTs7fLvjx79LjSTbNYiytVbZPQUQ5Yaxu2jXnimvw
+ 3rrszlaEXAMPLE=`,
+                accessKeyId: "AKIAIOSFODNN7EXAMPLE"
+            },
+            continuationToken: "A continuation token if continuing job"
+        }
+    }
+};
+
+CodePipelineEvent["CodePipeline.job"].data.encryptionKey = { type: 'KMS', id: 'key' };
 
 /* CloudFront events, see http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html */
 const CloudFrontRequestEvent: AWSLambda.CloudFrontRequestEvent = {
@@ -750,6 +804,8 @@ let apiGtwProxyHandler: AWSLambda.APIGatewayProxyHandler = (event: AWSLambda.API
 let proxyHandler: AWSLambda.ProxyHandler = (event: AWSLambda.APIGatewayEvent, context: AWSLambda.Context, cb: AWSLambda.ProxyCallback) => { };
 apiGtwProxyHandler = proxyHandler;
 
+let codePipelineHandler: AWSLambda.CodePipelineHandler = (event: AWSLambda.CodePipelineEvent, context: AWSLambda.Context, cb: AWSLambda.Callback<void>) => {};
+
 let cloudFrontRequestHandler: AWSLambda.CloudFrontRequestHandler = (event: AWSLambda.CloudFrontRequestEvent, context: AWSLambda.Context, cb: AWSLambda.CloudFrontRequestCallback) => {
     cb();
     cb(null);
@@ -782,3 +838,60 @@ let customHandler: AWSLambda.Handler<CustomEvent, CustomResult> = (event, contex
 };
 
 let kinesisStreamHandler: AWSLambda.KinesisStreamHandler = (event: AWSLambda.KinesisStreamEvent, context: AWSLambda.Context, cb: AWSLambda.Callback<void>) => { };
+
+let SQSMessageHandler: AWSLambda.SQSHandler = (event: AWSLambda.SQSEvent, context: AWSLambda.Context, cb: AWSLambda.Callback<void>) => { };
+
+// See https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sqs
+const SQSEvent: AWSLambda.SQSEvent = {
+    Records: [
+        {
+            messageId: "c80e8021-a70a-42c7-a470-796e1186f753",
+            receiptHandle: "AQEBJQ+/u6NsnT5t8Q/VbVxgdUl4TMKZ5FqhksRdIQvLBhwNvADoBxYSOVeCBXdnS9P+",
+            body: "{\"foo\":\"bar\"}",
+            attributes: {
+                ApproximateReceiveCount: "3",
+                SentTimestamp: "1529104986221",
+                SenderId: "594035263019",
+                ApproximateFirstReceiveTimestamp: "1529104986230"
+            },
+            messageAttributes: {},
+            md5OfBody: "9bb58f26192e4ba00f01e2e7b136bbd8",
+            eventSource: "aws:sqs",
+            eventSourceARN: "arn:aws:sqs:us-west-2:594035263019:NOTFIFOQUEUE",
+            awsRegion: "us-west-2"
+        }
+    ]
+};
+
+let SQSMessageLegacyAsyncHandler: AWSLambda.SQSHandler = async (
+    event: AWSLambda.SQSEvent,
+    context: AWSLambda.Context,
+    cb: AWSLambda.Callback<void>,
+) => {
+    // $ExpectType SQSEvent
+    event;
+    str = event.Records[0].messageId;
+    anyObj = event.Records[0].body;
+    // $ExpectType Context
+    context;
+    str = context.functionName;
+    // $ExpectType Callback<void>
+    cb;
+    cb();
+    cb(null);
+    cb(new Error());
+};
+
+let SQSMessageNode8AsyncHandler: AWSLambda.SQSHandler = async (
+    event: AWSLambda.SQSEvent,
+    context: AWSLambda.Context
+) => {
+    // $ExpectType SQSEvent
+    event;
+    str = event.Records[0].messageId;
+    anyObj = event.Records[0].body;
+    // $ExpectType Context
+    context;
+    str = context.functionName;
+    return;
+};

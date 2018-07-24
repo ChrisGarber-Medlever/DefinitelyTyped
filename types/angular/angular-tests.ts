@@ -214,11 +214,18 @@ mod.factory({
     name1(foo: any) {},
     name2: ['foo', (foo: any) => {}]
 });
-mod.filter('name', ($scope: ng.IScope) => {});
-mod.filter('name', ['$scope', ($scope: ng.IScope) => {}]);
+mod.filter('name', ($scope: ng.IScope) => () => {});
+mod.filter('name', ['$scope', ($scope: ng.IScope) => () => {}]);
 mod.filter({
-    name1(foo: any) {},
-    name2: ['foo', (foo: any) => {}]
+    name1(foo: any) { return () => {}; },
+    name2: ['foo', (foo: any) => () => {}],
+});
+const customStatefulFilter: ng.IFilterFunction = (s) => 1;
+mod.filter('name', () => customStatefulFilter);
+mod.filter('name', ['$scope', () => customStatefulFilter]);
+mod.filter({
+    name1: () => customStatefulFilter,
+    name2: ['foo', () => customStatefulFilter],
 });
 mod.provider('name', ($scope: ng.IScope) => ({ $get: () => { } }));
 mod.provider('name', TestProvider);
@@ -512,6 +519,20 @@ namespace TestInjector {
         anyResult = $injector.invoke(inlineAnnotatedFunction, 'anyContext', 'anyLocals');
         anyResult = $injector.invoke(inlineAnnotatedFunction, 'anyContext');
         anyResult = $injector.invoke(inlineAnnotatedFunction, undefined, 'anyLocals');
+    }
+
+    // $injector.loadNewModules
+    {
+        const inlineAnnotatedFunction: any[] = [false, (v: boolean) => {}];
+        const modA = angular.module('$injector.moduleA', []);
+        $injector.loadNewModules([modA]);
+        $injector.loadNewModules([modA.name]);
+        $injector.loadNewModules([inlineAnnotatedFunction]);
+    }
+
+    // $injector.modules
+    {
+        const module: angular.IModule = $injector.modules['$injector.module'];
     }
 }
 
@@ -1138,7 +1159,8 @@ angular.module('multiSlotTranscludeExample', [])
         };
     });
 
-angular.module('componentExample', [])
+// $ExpectType IModule
+const componentModule = angular.module('componentExample', [])
     .component('counter', {
         require: {ctrl: '^ctrl'},
         bindings: {
@@ -1160,6 +1182,16 @@ angular.module('componentExample', [])
         },
         template: '',
         transclude: true
+    })
+    .component({
+        aThirdComponent: {
+            controller: class AThirdComponentController {
+                count: number;
+            },
+            bindings: {
+                count: '='
+            }
+        }
     });
 
 interface ICopyExampleUser {
